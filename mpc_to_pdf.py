@@ -7,7 +7,7 @@ from fpdf import FPDF
 from mpc_cropper import crop_folder
 
 # CONSTANTS
-print_name = "A4_print"
+print_name = "PRINT"
 # a4 size mm
 pdf_w=210
 pdf_h=297
@@ -36,9 +36,8 @@ class PDF(FPDF):
 
   def draw_page(self, images, cut_lines):
     self.add_page()
-    with TemporaryDirectory() as f:
-      for i, image in enumerate(images):
-        self.image(image, w=card_size_w, h=card_size_h, x=margin_w+pos_x[i%3], y=margin_h+pos_y[i//3])
+    for i, image in enumerate(images):
+      self.image(image, w=card_size_w, h=card_size_h, x=margin_w+pos_x[i%3], y=margin_h+pos_y[i//3])
     if cut_lines:
       self.draw_cut_lines()
 
@@ -51,6 +50,7 @@ def main(argv):
   cut_lines = False
   pdf_breakpages = -1
   filter_re = ".*\.(png|jpg|jpeg)$"
+  pdf_size = "A4"
 
   try:
     opts, args = getopt.getopt(argv,"hi:nlp:",["help", "inputfolder=","nocrop=","cutlines=","pdfbreak="])
@@ -108,7 +108,7 @@ def main(argv):
       # draw each page of the pdf passing images_per_page
       pdf.draw_page(images_pdf[pagen:pagen+images_per_page], cut_lines)
     # write pdf on disk
-    target_file = '{}\\{}_{}.pdf'.format(inputfolder, print_name, pdfn)
+    target_file = '{}\\{}_{}_{}.pdf'.format(inputfolder, pdf_size, print_name, pdfn)
     pdf.output(target_file,'F')
   
   print ("***FINISHED***")
