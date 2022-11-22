@@ -8,42 +8,96 @@ from mpc_cropper import crop_folder
 
 # CONSTANTS
 print_name = "PRINT"
-# a4 size mm
-pdf_w=210
-pdf_h=297
-# n of images per page
-images_per_page = 9
-# pdf margins mm
-margin_w = 10
-margin_h = 16
 # target card size mm
 card_size_w=63
 card_size_h=88
-# position of columns/rows mm
-pos_x = [0, card_size_w, card_size_w*2]
-pos_y = [0, card_size_h, card_size_h*2]
-# cut line positions mm
-cut_line_x = [0, card_size_w, card_size_w*2, card_size_w*3]
-cut_line_y = [0, card_size_h, card_size_h*2, card_size_h*3]
+# TODO: remove this from global, change checking from images per page to pages present
+images_per_page_A4 = 9
+images_per_page_A3 = 18
 
-class PDF(FPDF):
+# TODO: read docs about margins
+# TODO: create parent class with properties (margin_x, margin_y, images_per_page, cut_line_x, cut_line_y, pos_x, pos_y)
+class A4(FPDF):
   def draw_cut_lines(self):
+    # cut line positions mm
+    cutline_x = [x * card_size_w for x in range(self.columns + 1)]
+    cutline_y = [y * card_size_h for y in range(self.rows + 1)]
     self.set_draw_color(r=20, g=20, b=20)
-    for x in cut_line_x:
-      self.dashed_line(x+margin_w, 0, x+margin_w, pdf_h, 2, 4)
-    for y in cut_line_y:
-      self.dashed_line(0, y+margin_h, pdf_w, y+margin_h, 2, 4)
+    for x in cutline_x:
+      self.dashed_line(x + self.margin_x, 0, x + self.margin_x, self.pdf_w, 2, 4)
+    for y in cutline_y:
+      self.dashed_line(0, y + self.margin_y, self.pdf_h, y + self.margin_y, 2, 4)
 
   def draw_page(self, images, cut_lines):
+    # position of columns/rows mm
+    pos_x = [x * card_size_w for x in range(self.columns)]
+    pos_y = [y * card_size_h for y in range(self.rows)]
     self.add_page()
     for i, image in enumerate(images):
-      self.image(image, w=card_size_w, h=card_size_h, x=margin_w+pos_x[i%3], y=margin_h+pos_y[i//3])
+      coords = (pos_x[i%self.columns], pos_y[i//self.columns])
+      self.image(image, w=card_size_w, h=card_size_h, x=self.margin_x+coords[0], y=self.margin_y+coords[1])
     if cut_lines:
       self.draw_cut_lines()
+    #TODO: print with bleeds
+
+  def draw_pdf(self, images, cut_lines):
+    # dimensions
+    self.pdf_w = 210
+    self.pdf_h = 297
+    # margins
+    self.margin_x = 10
+    self.margin_y = 16
+    # cards
+    self.columns = 3
+    self.rows = 3
+    
+    self.images_per_page = self.columns * self.rows
+
+    for pagen in range(0, len(images), self.images_per_page):
+      self.draw_page(images[pagen:pagen+self.images_per_page], cut_lines)
+
+class A3(FPDF):
+  def draw_cut_lines(self):
+    # cut line positions mm
+    cutline_x = [x * card_size_w for x in range(self.columns + 1)]
+    cutline_y = [y * card_size_h for y in range(self.rows + 1)]
+    self.set_draw_color(r=20, g=20, b=20)
+    for x in cutline_x:
+      self.dashed_line(x + self.margin_x, 0, x + self.margin_x, self.pdf_h, 2, 4)
+    for y in cutline_y:
+      self.dashed_line(0, y + self.margin_y, self.pdf_w, y + self.margin_y, 2, 4)
+
+  def draw_page(self, images, cut_lines):
+    # position of columns/rows mm
+    pos_x = [x * card_size_w for x in range(self.columns)]
+    pos_y = [y * card_size_h for y in range(self.rows)]
+    self.add_page()
+    for i, image in enumerate(images):
+      coords = (pos_x[i%self.columns], pos_y[i//self.columns])
+      self.image(image, w=card_size_w, h=card_size_h, x=self.margin_x+coords[0], y=self.margin_y+coords[1])
+    if cut_lines:
+      self.draw_cut_lines()
+    #TODO: print with bleeds
+
+  def draw_pdf(self, images, cut_lines):
+    # dimensions
+    self.pdf_w = 297
+    self.pdf_h = 420
+    # margins
+    self.margin_x = 16
+    self.margin_y = 24
+    # cards
+    self.columns = 6
+    self.rows = 3
+    
+    self.images_per_page = self.columns * self.rows
+
+    for pagen in range(0, len(images), self.images_per_page):
+      self.draw_page(images[pagen:pagen+self.images_per_page], cut_lines)
 
 def main(argv):
   print ("***BEGIN***")
-  help_text = 'mpc_to_pdf.py -i <input_folder> -p <max_pages_per_pdf> -n -l'
+  help_text = 'mpc_to_pdf.py -i <input_folder> -p <max_pages_per_pdf> -f <A4|A3> -n -l'
   
   inputfolder = ""
   needs_cropping = True
@@ -53,7 +107,7 @@ def main(argv):
   pdf_size = "A4"
 
   try:
-    opts, args = getopt.getopt(argv,"hi:nlp:",["help", "inputfolder=","nocrop=","cutlines=","pdfbreak="])
+    opts, args = getopt.getopt(argv,"hi:nlp:f:",["help", "inputfolder=","nocrop=","cutlines=","pdfbreak=","format="])
   except getopt.GetoptError:
     print (help_text)
     sys.exit(2)
@@ -70,6 +124,8 @@ def main(argv):
         cut_lines = True
       case "-p":
         pdf_breakpages = (int)(arg)
+      case "-f":
+        pdf_size = arg
 
   if inputfolder == "":
     print ("-i <input_folder> is mandatory")
@@ -97,19 +153,22 @@ def main(argv):
 
   print ("***CONVERTING {} images out of {} files inside the folder***".format(len(images), images_non_filtered))
 
-  images_per_pdf = len(images) if pdf_breakpages < 1 else pdf_breakpages * images_per_page
+  # TODO: change this so its cleaner (eg: not use n of images per format)
+  images_per_pdf = len(images) if pdf_breakpages < 1 else pdf_breakpages * (images_per_page_A4 if pdf_size == "A4" else images_per_page_A3)
   for pdfi in range(0, len(images), images_per_pdf):
     pdfn = (pdfi // images_per_pdf) + 1
     images_pdf = images[pdfi:pdfi+images_per_pdf]
     print ("***GENERATING PDF#{}*** ({} renders)".format(pdfn, len(images_pdf)))
-    # create pdf on memory
-    pdf = PDF()
-    for pagen in range(0, len(images_pdf), images_per_page):
-      # draw each page of the pdf passing images_per_page
-      pdf.draw_page(images_pdf[pagen:pagen+images_per_page], cut_lines)
+    # pdf based on pdf_size
+    match (pdf_size):
+      case "A4":
+        pdf = A4("P", "mm", "A4")
+      case "A3":
+        pdf = A3("L", "mm", "A3")
+    pdf.draw_pdf(images_pdf, cut_lines)
     # write pdf on disk
     target_file = '{}\\{}_{}_{}.pdf'.format(inputfolder, pdf_size, print_name, pdfn)
-    pdf.output(target_file,'F')
+    pdf.output(target_file, 'F')
   
   print ("***FINISHED***")
 

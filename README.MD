@@ -17,6 +17,8 @@ OPTIONS
 
 -p <pages_per_pdf>  Max number of pages per PDF, will split in multiple PDF if needed. By default it won't split into multiple PDFs.
 
+-f <A4|A3>          Page size to output to, A4 = 9 cards per page, A3 = 18 cards per page. By default A4.
+
 -n                  Include this option if you don't need to crop the images. By default it crops images.
 
 -l                  Include this option to draw cut lines on the PDF. By default it doesn't include cut-lines.
@@ -30,4 +32,6 @@ More informative output.
 
 Multi-threaded cropping.
 
-Output as A3 PDF.
+Allow selecting profile: home printer (no bleed, cut lines as dashed lines) or professional print (bleed, cut lines as only top and bottom)
+
+Code cleanup.
