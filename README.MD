@@ -5,12 +5,14 @@ Currently assumes that renders have 3264x4440 dimensions with bleed line, and 30
 
 INSTALLATION
 pip install -r requirements.txt
+
 PYTHON VERSION: 3
 
 USAGE
 python mpc_to_pdf.py -i <PATH_TO_MPC_RENDERS>
 
 OPTIONS
+
 -p <pages_per_pdf>  Max number of pages per PDF, will split in multiple PDF if needed. By default it won't split into multiple PDFs.
 
 -n                  Include this option if you don't need to crop the images. By default it crops images.
