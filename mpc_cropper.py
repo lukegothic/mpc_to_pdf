@@ -1,4 +1,4 @@
-import cv2, os, numpy as np
+import cv2, numpy as np
 
 # CONSTANTS
 # mpc image sizes pixels
@@ -10,6 +10,7 @@ mpc_image_bleed_h = 120 # each side, 4200 sans bleed
 
 # path: Path
 # image_extensions (opcional) : Array de extensiones
+# TODO: a pyluke
 def get_images_from_path(path, image_extensions=[".png", ".jpg", ".jpeg"]):
   return [f for f in path.iterdir() if f.is_file() and f.suffix in image_extensions]
 

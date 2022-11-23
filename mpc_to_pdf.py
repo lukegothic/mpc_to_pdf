@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import os, re, getopt, sys
+import getopt, sys
 from tempfile import TemporaryDirectory
 from fpdf import FPDF
 from pathlib import Path
