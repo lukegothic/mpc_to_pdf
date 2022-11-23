@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 import os, re, getopt, sys
 from tempfile import TemporaryDirectory
-
 from fpdf import FPDF
+from pathlib import Path
 
-from mpc_cropper import crop_folder
+from mpc_cropper import crop_folder, get_images_from_path
 
 # CONSTANTS
 print_name = "PRINT"
@@ -28,19 +28,19 @@ class A4(FPDF):
     for y in cutline_y:
       self.dashed_line(0, y + self.margin_y, self.pdf_h, y + self.margin_y, 2, 4)
 
-  def draw_page(self, images, cut_lines):
+  def draw_page(self, image_paths, cut_lines):
     # position of columns/rows mm
     pos_x = [x * card_size_w for x in range(self.columns)]
     pos_y = [y * card_size_h for y in range(self.rows)]
     self.add_page()
-    for i, image in enumerate(images):
+    for i, image_path in enumerate(image_paths):
       coords = (pos_x[i%self.columns], pos_y[i//self.columns])
-      self.image(image, w=card_size_w, h=card_size_h, x=self.margin_x+coords[0], y=self.margin_y+coords[1])
+      self.image(str(image_path), w=card_size_w, h=card_size_h, x=self.margin_x+coords[0], y=self.margin_y+coords[1])
     if cut_lines:
       self.draw_cut_lines()
     #TODO: print with bleeds
 
-  def draw_pdf(self, images, cut_lines):
+  def draw_pdf(self, image_paths, cut_lines):
     # dimensions
     self.pdf_w = 210
     self.pdf_h = 297
@@ -53,8 +53,8 @@ class A4(FPDF):
     
     self.images_per_page = self.columns * self.rows
 
-    for pagen in range(0, len(images), self.images_per_page):
-      self.draw_page(images[pagen:pagen+self.images_per_page], cut_lines)
+    for pagen in range(0, len(image_paths), self.images_per_page):
+      self.draw_page(image_paths[pagen:pagen+self.images_per_page], cut_lines)
 
 class A3(FPDF):
   def draw_cut_lines(self):
@@ -67,19 +67,19 @@ class A3(FPDF):
     for y in cutline_y:
       self.dashed_line(0, y + self.margin_y, self.pdf_w, y + self.margin_y, 2, 4)
 
-  def draw_page(self, images, cut_lines):
+  def draw_page(self, image_paths, cut_lines):
     # position of columns/rows mm
     pos_x = [x * card_size_w for x in range(self.columns)]
     pos_y = [y * card_size_h for y in range(self.rows)]
     self.add_page()
-    for i, image in enumerate(images):
+    for i, image_path in enumerate(image_paths):
       coords = (pos_x[i%self.columns], pos_y[i//self.columns])
-      self.image(image, w=card_size_w, h=card_size_h, x=self.margin_x+coords[0], y=self.margin_y+coords[1])
+      self.image(str(image_path), w=card_size_w, h=card_size_h, x=self.margin_x+coords[0], y=self.margin_y+coords[1])
     if cut_lines:
       self.draw_cut_lines()
     #TODO: print with bleeds
 
-  def draw_pdf(self, images, cut_lines):
+  def draw_pdf(self, image_paths, cut_lines):
     # dimensions
     self.pdf_w = 297
     self.pdf_h = 420
@@ -92,18 +92,17 @@ class A3(FPDF):
     
     self.images_per_page = self.columns * self.rows
 
-    for pagen in range(0, len(images), self.images_per_page):
-      self.draw_page(images[pagen:pagen+self.images_per_page], cut_lines)
+    for pagen in range(0, len(image_paths), self.images_per_page):
+      self.draw_page(image_paths[pagen:pagen+self.images_per_page], cut_lines)
 
 def main(argv):
   print ("***BEGIN***")
   help_text = 'mpc_to_pdf.py -i <input_folder> -p <max_pages_per_pdf> -f <A4|A3> -n -l'
   
-  inputfolder = ""
+  input_folder = ""
   needs_cropping = True
   cut_lines = False
   pdf_breakpages = -1
-  filter_re = ".*\.(png|jpg|jpeg)$"
   pdf_size = "A4"
 
   try:
@@ -117,7 +116,7 @@ def main(argv):
         print (help_text)
         sys.exit()
       case "-i":
-        inputfolder = arg
+        input_folder = arg
       case "-n":
         needs_cropping = False
       case "-l":
@@ -127,37 +126,35 @@ def main(argv):
       case "-f":
         pdf_size = arg
 
-  if inputfolder == "":
+  if input_folder == "":
     print ("-i <input_folder> is mandatory")
     sys.exit(2)
 
+  input_folder = Path(input_folder)
+
   print ("***FINISHED CONFIGURATION***")
 
-  print ("Converting renders on path [{}] to PDF\nCROP RENDERS [{}] CUT LINES [{}] MAX PAGES PER PDF [{}]".format(inputfolder, "YES" if needs_cropping else "NO", "YES" if cut_lines else "NO", "ALL" if pdf_breakpages == -1 else pdf_breakpages))
+  print ("Converting renders on path [{}] to PDF\nCROP RENDERS [{}] CUT LINES [{}] MAX PAGES PER PDF [{}]".format(str(input_folder), "YES" if needs_cropping else "NO", "YES" if cut_lines else "NO", "ALL" if pdf_breakpages == -1 else pdf_breakpages))
 
   print ("***STARTING PROCESS***")
 
   if needs_cropping:
     temp_dir = TemporaryDirectory()
-    crops_folder = temp_dir.name
-    crop_folder(inputfolder, crops_folder)
+    crops_folder = Path(temp_dir.name)
+    crop_folder(input_folder, crops_folder)
   else:
-    crops_folder = inputfolder
+    crops_folder = input_folder
     print ("***SKIPPING CROPPING RENDERS***")
 
-  # get files inside folder
-  images = os.listdir(crops_folder)
-  images_non_filtered = len(images)
-  # get images
-  images = ["{}\{}".format(crops_folder, f) for f in images if not re.match(filter_re, f) is None]
-
-  print ("***CONVERTING {} images out of {} files inside the folder***".format(len(images), images_non_filtered))
+  image_paths = get_images_from_path(input_folder)
+  image_count = len(image_paths)
+  print ("***CONVERTING {} images to PDF***".format(image_count))
 
   # TODO: change this so its cleaner (eg: not use n of images per format)
-  images_per_pdf = len(images) if pdf_breakpages < 1 else pdf_breakpages * (images_per_page_A4 if pdf_size == "A4" else images_per_page_A3)
-  for pdfi in range(0, len(images), images_per_pdf):
+  images_per_pdf = image_count if pdf_breakpages < 1 else pdf_breakpages * (images_per_page_A4 if pdf_size == "A4" else images_per_page_A3)
+  for pdfi in range(0, image_count, images_per_pdf):
     pdfn = (pdfi // images_per_pdf) + 1
-    images_pdf = images[pdfi:pdfi+images_per_pdf]
+    images_pdf = image_paths[pdfi:pdfi+images_per_pdf]
     print ("***GENERATING PDF#{}*** ({} renders)".format(pdfn, len(images_pdf)))
     # pdf based on pdf_size
     match (pdf_size):
@@ -167,8 +164,8 @@ def main(argv):
         pdf = A3("L", "mm", "A3")
     pdf.draw_pdf(images_pdf, cut_lines)
     # write pdf on disk
-    target_file = '{}\\{}_{}_{}.pdf'.format(inputfolder, pdf_size, print_name, pdfn)
-    pdf.output(target_file, 'F')
+    target_file = input_folder / "{}_{}_{}.pdf".format(pdf_size, print_name, pdfn)
+    pdf.output(str(target_file), 'F')
   
   print ("***FINISHED***")
 

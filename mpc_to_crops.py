@@ -1,5 +1,6 @@
 import getopt, sys
 from mpc_cropper import crop_folder
+from pathlib import Path
 
 def main(argv):
   print ("***BEGIN***")
@@ -27,8 +28,12 @@ def main(argv):
     print ("-i <input_folder> is mandatory")
     sys.exit(2)
 
+  input_folder = Path(input_folder)
+
   if output_folder == "":
-    output_folder = "{}\\_crops".format(input_folder)
+    output_folder = input_folder / "_crops"
+  else:
+    output_folder = Path(output_folder)
 
   crop_folder(input_folder, output_folder)
 
