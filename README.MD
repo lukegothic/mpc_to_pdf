@@ -15,13 +15,15 @@ python mpc_to_pdf.py -i <PATH_TO_MPC_RENDERS>
 
 OPTIONS
 
--p <pages_per_pdf>  Max number of pages per PDF, will split in multiple PDF if needed. By default it won't split into multiple PDFs.
+-b <pages_per_pdf>  Max number of pages per PDF, will split in multiple PDF if needed. By default it won't split into multiple PDFs.
 
 -f <A4|A3>          Page size to output to, A4 = 9 cards per page, A3 = 18 cards per page. By default A4.
 
+-p <home|pro>       Profile to use for output, home for home printers (crops renders and cut line is for scissors) and pro is to send to a printing house (keeps bleeds and cut line is for paper-cutter) . By default is home.
+
 -n                  Include this option if you don't need to crop the images. By default it crops images.
 
--l                  Include this option to draw cut lines on the PDF. By default it doesn't include cut-lines.
+-c                  Include this option to draw cut lines on the PDF. By default it doesn't include cut-lines.
 
 
 Since cropping a lot of big images is a lenghty process, I also provide a standalone and runnable file (mpc_to_crops.py) to pre-generate crops, and then on the main program you can specify option -n and point out to the crops folder to skip cropping. USAGE for that file is python mpc_to_crops.py -i <PATH_TO_MPC_RENDERS> -o <OUTPUT_FOLDER>
